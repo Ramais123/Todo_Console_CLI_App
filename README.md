@@ -1,57 +1,100 @@
-# Advanced Todo App
+# Evolution of Todo – Todo In-Memory Python Console App (Full Version)
 
-This is an advanced CLI-based todo application with intelligent features including recurring tasks and due date reminders.
+**Hackathon Project**
+**Theme**: From CLI to Distributed Cloud-Native AI Systems
+**Current Phase**: Complete – Basic + Intermediate + Advanced Levels Implemented
+
+This repository contains a fully featured command-line Todo application built **entirely through spec-driven, AI-assisted development** using Spec-Kit Plus and Qwen — **zero manual coding**. The project demonstrates the progressive evolution of a simple script into a smart, intelligent CLI tool.
 
 ## Features
 
-- **Add Tasks**: Add new tasks with titles, descriptions, priorities, tags, due dates, and recurrence settings
-- **View Tasks**: View all tasks with sorting by due date and priority
-- **Update Tasks**: Update existing tasks with new information
-- **Complete Tasks**: Mark tasks as complete; recurring tasks automatically generate new instances
-- **Delete Tasks**: Remove tasks from the list
-- **Due Date Reminders**: Tasks can have optional due dates with visual indicators for overdue tasks
-- **Recurring Tasks**: Tasks can be set to recur daily, weekly, or monthly
-- **Reminder System**: Displays overdue, due today, and upcoming tasks at startup and after key actions
+### Basic Level (Core MVP)
+- Add tasks with title and description
+- List all tasks with ID and status (✅/❌)
+- Update task details
+- Delete task by ID
+- Mark as complete/incomplete
 
-## Getting Started
+### Intermediate Level (Organization & Usability)
+- Priorities: High (🔥), Medium (⚡), Low (➖)
+- Multiple tags/categories per task (e.g., work, personal, health)
+- Search tasks by keyword (title/description)
+- Filter by status, priority, or tag
+- Sort by priority, title, or status
+- Rich, formatted table view
 
-1. Run the application:
-   ```bash
-   python src/cli/main.py
-   ```
+### Advanced Level (Intelligent Features)
+- Due dates & time support (YYYY-MM-DD or YYYY-MM-DD HH:MM)
+- Console-based reminders on startup:
+  - 🔥 OVERDUE: Tasks past their due date
+  - ⏰ DUE TODAY: Tasks due today
+  - 📅 UPCOMING: Tasks due in the next 3 days
+- Recurring tasks (daily, weekly, monthly) with 🔁 indicator
+- Auto-rescheduling: completing a recurring task creates a new instance with the next due date
+- Auto-sorting by due date (soonest first), then priority
 
-2. Use the menu system to interact with your tasks
+All data is stored **in-memory only** (lost on exit) as per Phase I requirements.
 
-## Task Properties
+## Demo Screenshot Example
+=== REMINDERS ===
+🔥 OVERDUE: #3 Pay bills (Due: 2026-01-01)
+⏰ DUE TODAY: #5 Team standup (Due: 2026-01-02)
+ID | Priority | Title                | Tags            | Due          | Status/Recur | Description
+1  | 🔥 High   | Finish report        | work, urgent    | 2026-01-05   | ❌           | Final Q4 summary
+2  | ⚡ Medium | Gym                  | health          | 2026-01-03   | ❌ 🔁        | Weekly workout
+...
 
-- **ID**: Unique identifier for each task
-- **Title**: The task title (required)
-- **Description**: Optional detailed description
-- **Priority**: High, Medium, or Low (default: Medium)
-- **Tags**: Optional list of tags for categorization
-- **Due Date**: Optional due date in YYYY-MM-DD HH:MM format
-- **Recurrence**: none, daily, weekly, or monthly (default: none)
-- **Status**: Completed (✅) or incomplete (⏳), with recurring indicator (🔁)
+## Project Structure
+.
+├── constitution.md                  # AI agent constitution & progression rules
+├── README.md                        # This file
+├── pyproject.toml                   # UV configuration (optional)
+├── specs_history/                   # All spec versions
+│   ├── spec_basic.md
+│   ├── spec_intermediate.md
+│   ├── spec_advanced.md
+│   └── ...
+├── src/
+│   ├── main.py                      # Entry point & CLI loop
+│   ├── models.py                    # Task dataclass
+│   ├── storage.py                   # In-memory manager
+│   ├── ui.py                        # Display & input helpers
+│   └── utils.py                     # Date handling & formatting
+└── ...
 
-## Recurring Tasks
+## Setup & Run
 
-When you mark a recurring task as complete, the application automatically creates a new instance of the task with the next due date based on the recurrence interval:
-- Daily: +1 day
-- Weekly: +7 days
-- Monthly: +30 days
+### Requirements
+- Python 3.13+
+- UV (recommended): https://docs.astral.sh/uv/
 
-## Due Date Reminders
+### Quick Start
+```bash
+git clone https://github.com/your-username/evolution-of-todo.git
+cd evolution-of-todo
 
-The application provides visual reminders:
-- 🔥 OVERDUE: Tasks past their due date
-- ⏰ DUE TODAY: Tasks due today
-- 📅 UPCOMING: Tasks due in the next 3 days
+uv venv
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
 
-These reminders are displayed at application startup and after key actions (add, update, complete, delete).
+python -m src.main
+```
 
-## Technical Details
+Explore the menu to experience all features — try creating recurring tasks and setting due dates to see auto-reminders and rescheduling!
 
-- Built with Python 3.13
-- Uses only standard library modules
-- In-memory storage (tasks are lost on exit)
-- Modular architecture with separate models, services, and CLI layers
+## Development Process
+
+100% Spec-Driven: Every feature began with /sp.specify → /sp.plan → atomic tasks → AI code generation
+No Manual Code: Entire codebase generated iteratively via Qwen
+Clean & Modular: Type hints, docstrings, error handling, PEP 8 compliance
+
+## Future Evolution (Planned)
+
+- Persistent storage
+- Web/API interface
+- Cloud-native distributed system (Kubernetes)
+- Full AI-powered intelligence
+
+Built for Hackathon II: Spec-Driven Development
+Complete process (constitution, specs history, iterations) included for judging.
+
+Made with ❤️ using AI as Product Architect
