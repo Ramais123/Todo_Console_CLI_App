@@ -1,0 +1,5 @@
+# Requirements for Todo App Intermediate Features
+# Python 3.13+ required
+
+# No external dependencies required for this implementation
+# All functionality uses Python standard library
