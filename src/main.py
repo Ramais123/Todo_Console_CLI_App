@@ -1,115 +1,108 @@
 """
 Main entry point for the Todo CLI application.
-Implements an interactive REPL loop for managing tasks.
+Full support: Basic + Intermediate + Advanced (Due Dates, Recurring Tasks, Reminders)
 """
 import sys
+from datetime import datetime as dt
+
 from todo import TodoManager
-from ui import display_task_table, get_validated_input, validate_priority, validate_tags
+from ui import (
+    display_task_table,
+    validate_priority,
+    validate_tags,
+    display_search_results,
+    display_filtered_tasks,
+    display_sorted_tasks,
+)
 
 
 def print_help():
-    """Print help information showing all available commands."""
+    """Print updated help with Advanced feature examples."""
     help_text = """
-Todo Application Help
-=====================
-Available commands:
-  add <title> <description> [priority] [tags] - Add a new task with priority and tags
-  list                        - List all tasks in enhanced format
-  update <id> [title] [desc] [priority] [tags] - Update a task (optional fields)
-  delete <id>                 - Delete a task
-  complete <id>               - Mark task as complete
-  incomplete <id>             - Mark task as incomplete
-  search <keyword>            - Search tasks by keyword
-  filter <type> <value>       - Filter tasks (type: status, priority, tag)
-  sort <type>                 - Sort tasks (type: priority, title, status)
-  help                        - Show this help message
-  exit                        - Exit the application
+Evolution of Todo – Full Advanced CLI Help
+==========================================
+Commands:
+  add "<title>" "<description>" [priority] [tags] [due_date] [recurrence]
+      → priority: high | medium | low (default: medium)
+      → tags: comma-separated (e.g. work,health)
+      → due_date: YYYY-MM-DD or YYYY-MM-DD HH:MM (optional)
+      → recurrence: daily | weekly | monthly | none (optional)
+
+  list                  → Shows reminders first, then full sorted task list
+  update <id> [title] [desc] [priority] [tags] [due_date] [recurrence]
+  delete <id>
+  complete <id>         → Recurring tasks auto-create next instance!
+  incomplete <id>
+  search <keyword>
+  filter <type> <value> → type: status | priority | tag
+  sort <type>           → type: priority | title | status
+  help                  → Show this help
+  exit                  → Quit
 
 Examples:
-  add "Buy groceries" "Milk, bread, eggs" high "shopping,urgent"
-  list
-  update 1 "Buy groceries" "Milk, bread, eggs, fruits" medium "shopping"
+  add "Team Meeting" "Weekly sync" high work "2026-01-09 10:00" weekly
+  add "Gym" "Evening workout" medium health "2026-01-05 18:00" daily
+  add "Pay rent" "Monthly bill" high finance "2026-02-01" monthly
   complete 1
-  delete 2
-  search "groceries"
-  filter priority high
-  sort title
+  update 3 "" "" "" "" "2026-01-16 10:00" weekly
 """
     print(help_text)
 
 
-def parse_command(user_input: str) -> tuple:
-    """
-    Parse user input into command and arguments.
-    
-    Args:
-        user_input: Raw user input string
-        
-    Returns:
-        Tuple of (command, args_list)
-    """
-    parts = user_input.strip().split()
-    if not parts:
+def parse_command(user_input: str):
+    """Robust parser that handles quoted strings properly."""
+    if not user_input.strip():
         return "", []
-    
+
+    parts = user_input.strip().split()
     command = parts[0].lower()
-    args = parts[1:]
-    
-    # Handle quoted arguments
-    if '"' in user_input or "'" in user_input:
-        args = []
-        current_arg = ""
-        in_quotes = False
-        quote_char = None
-        
-        i = 0
-        while i < len(user_input):
-            char = user_input[i]
-            
-            if char in ['"', "'"] and not in_quotes:
-                in_quotes = True
-                quote_char = char
-            elif char == quote_char and in_quotes:
-                in_quotes = False
-                quote_char = None
-                args.append(current_arg)
-                current_arg = ""
-            elif char == " " and not in_quotes and current_arg:
-                args.append(current_arg)
-                current_arg = ""
-            elif not (char == " " and not current_arg):
-                current_arg += char
-            
-            i += 1
-        
-        if current_arg:
-            args.append(current_arg)
-        
-        # Remove the command from args if it was parsed as part of the quoted string
-        if args and args[0].lower() == command:
-            args = args[1:]
-    
+    rest = user_input[len(parts[0]):].strip()
+
+    args = []
+    current = ""
+    in_quotes = False
+    quote_char = None
+
+    for char in rest:
+        if char in ['"', "'"] and not in_quotes:
+            in_quotes = True
+            quote_char = char
+        elif char == quote_char and in_quotes:
+            in_quotes = False
+            quote_char = None
+            if current:
+                args.append(current)
+            current = ""
+        elif char == " " and not in_quotes:
+            if current:
+                args.append(current)
+            current = ""
+        else:
+            current += char
+
+    if current:
+        args.append(current)
+
     return command, args
 
 
 def main():
-    """Main application loop."""
-    print("Welcome to the Enhanced Todo Application!")
-    print("Type 'help' for available commands or 'exit' to quit.")
+    """Main REPL loop – now with full Advanced support."""
+    print("Welcome to Evolution of Todo – Full Advanced Version!")
+    print("Type 'help' for commands • 'exit' to quit\n")
 
-    todo_manager = TodoManager()
+    manager = TodoManager()
 
     while True:
         try:
-            user_input = input("\ntodo> ").strip()
-
+            user_input = input("todo> ").strip()
             if not user_input:
                 continue
 
             command, args = parse_command(user_input)
 
-            if command in ["exit", "quit"]:
-                print("Goodbye!")
+            if command in ["exit", "quit", "q"]:
+                print("\nGoodbye! See you next time 👋")
                 sys.exit(0)
 
             elif command == "help":
@@ -117,177 +110,197 @@ def main():
 
             elif command == "add":
                 if len(args) < 2:
-                    print("Usage: add <title> <description> [priority] [tags]")
+                    print("Usage: add \"<title>\" \"<description>\" [priority] [tags] [due_date] [recurrence]")
                     continue
 
                 title = args[0]
-                description = args[1] if len(args) > 1 else ""
-
-                # Get priority if provided, otherwise use default
-                priority = args[2] if len(args) > 2 else "Medium"
-                if not validate_priority(priority):
-                    print("Priority must be 'high', 'medium', or 'low'. Using default 'Medium'.")
-                    priority = "Medium"
-
-                # Get tags if provided
+                description = args[1]
+                priority = (args[2].lower() if len(args) > 2 else "medium")
                 tags_str = args[3] if len(args) > 3 else ""
+                due_str = args[4] if len(args) > 4 else None
+                recurrence = (args[5].lower() if len(args) > 5 else "none")
+
+                # Validation
+                if priority not in ["high", "medium", "low"]:
+                    print("Invalid priority → defaulting to 'medium'")
+                    priority = "medium"
+
                 tags = validate_tags(tags_str)
 
-                task = todo_manager.add_task(title, description, priority, tags)
-                print(f"Added task #{task.id}: {task.title} (Priority: {task.priority}, Tags: {', '.join(task.tags) if task.tags else '-'})")
+                due_date = None
+                if due_str and due_str.strip():
+                    try:
+                        if " " in due_str.strip():
+                            due_date = dt.strptime(due_str.strip(), "%Y-%m-%d %H:%M")
+                        else:
+                            due_date = dt.strptime(due_str.strip(), "%Y-%m-%d")
+                    except ValueError:
+                        print("Invalid date format → due date ignored")
+                        due_date = None
+
+                if recurrence not in ["daily", "weekly", "monthly", "none"]:
+                    print("Invalid recurrence → using 'none'")
+                    recurrence = "none"
+
+                task = manager.add_task(
+                    title=title,
+                    description=description,
+                    priority=priority,
+                    tags=tags,
+                    due_date=due_date,
+                    recurrence=recurrence,
+                )
+
+                due_msg = due_date.strftime("%Y-%m-%d %H:%M") if due_date else "-"
+                recur_msg = f" {recurrence.capitalize()}" if recurrence != "none" else ""
+                print(f"✅ Added task #{task.id}: {title} | Due: {due_msg}{recur_msg}")
 
             elif command == "list":
-                tasks = todo_manager.list_tasks()
+                # Show reminders first
+                reminders = manager.get_reminders()
+                if reminders:
+                    print("\n=== REMINDERS ===")
+                    for line in reminders:
+                        print(line)
+                    print()
+
+                tasks = manager.list_tasks()
                 if not tasks:
-                    print("No tasks found.")
+                    print("No tasks yet — add one with 'add'!")
                 else:
                     display_task_table(tasks)
 
             elif command == "update":
                 if len(args) < 1:
-                    print("Usage: update <id> [title] [description] [priority] [tags]")
+                    print("Usage: update <id> [title] [desc] [priority] [tags] [due] [recurrence]")
                     continue
-
                 try:
                     task_id = int(args[0])
                 except ValueError:
-                    print("Task ID must be a number.")
+                    print("ID must be a number")
                     continue
 
-                # Get current task to use existing values if not provided
-                task = todo_manager.get_task_by_id(task_id)
-                if not task:
-                    print(f"Task with ID {task_id} not found.")
+                current = manager.get_task_by_id(task_id)
+                if not current:
+                    print(f"Task #{task_id} not found")
                     continue
 
-                # Use provided values or keep existing ones
-                title = args[1] if len(args) > 1 else task.title
-                description = args[2] if len(args) > 2 else task.description
-                priority = args[3] if len(args) > 3 else task.priority
+                title = args[1] if len(args) > 1 and args[1] else current.title
+                desc = args[2] if len(args) > 2 and args[2] else current.description
+                priority = args[3].lower() if len(args) > 3 and args[3] else current.priority
                 tags_str = args[4] if len(args) > 4 else ""
+                due_str = args[5] if len(args) > 5 else None
+                recurrence = args[6].lower() if len(args) > 6 else current.recurrence
 
-                # Validate priority
-                if priority and not validate_priority(priority):
-                    print("Priority must be 'high', 'medium', or 'low'. Keeping current value.")
-                    priority = task.priority
+                if priority not in ["high", "medium", "low"]:
+                    priority = current.priority
 
-                # Validate tags
-                tags = validate_tags(tags_str) if tags_str else task.tags
+                tags = validate_tags(tags_str) if tags_str else current.tags
 
-                if todo_manager.update_task(task_id, title, description, priority, tags):
-                    print(f"Updated task #{task_id}: {title} (Priority: {priority}, Tags: {', '.join(tags) if tags else '-'})")
+                due_date = current.due_date
+                if due_str is not None:
+                    if due_str.strip():
+                        try:
+                            if " " in due_str:
+                                due_date = dt.strptime(due_str.strip(), "%Y-%m-%d %H:%M")
+                            else:
+                                due_date = dt.strptime(due_str.strip(), "%Y-%m-%d")
+                        except ValueError:
+                            print("Invalid date → keeping existing")
+                            due_date = current.due_date
+                    else:
+                        due_date = None
+
+                if recurrence not in ["daily", "weekly", "monthly", "none"]:
+                    recurrence = current.recurrence
+
+                if manager.update_task(task_id, title, desc, priority, tags, due_date, recurrence):
+                    print(f"Updated task #{task_id}")
+
+            elif command == "complete":
+                if len(args) != 1:
+                    print("Usage: complete <id>")
+                    continue
+                try:
+                    task_id = int(args[0])
+                except ValueError:
+                    print("ID must be a number")
+                    continue
+
+                result = manager.mark_task_complete(task_id)
+                if result is False:
+                    print(f"Task #{task_id} not found")
+                elif result is True:
+                    print(f"Task #{task_id} marked complete!")
+                else:  # result is new recurring task
+                    due_str = result.due_date.strftime("%Y-%m-%d %H:%M") if result.due_date else "N/A"
+                    print(f"Task #{task_id} completed!  New instance #{result.id} created → Due: {due_str}")
+
+            elif command == "incomplete":
+                if len(args) != 1:
+                    print("Usage: incomplete <id>")
+                    continue
+                try:
+                    task_id = int(args[0])
+                except ValueError:
+                    print("ID must be a number")
+                    continue
+                if manager.mark_task_incomplete(task_id):
+                    print(f"Task #{task_id} marked incomplete")
                 else:
-                    print(f"Task with ID {task_id} not found.")
+                    print(f"Task #{task_id} not found")
 
             elif command == "delete":
                 if len(args) != 1:
                     print("Usage: delete <id>")
                     continue
-
                 try:
                     task_id = int(args[0])
                 except ValueError:
-                    print("Task ID must be a number.")
+                    print("ID must be a number")
                     continue
-
-                if todo_manager.delete_task(task_id):
+                if manager.delete_task(task_id):
                     print(f"Deleted task #{task_id}")
                 else:
-                    print(f"Task with ID {task_id} not found.")
-
-            elif command in ["complete", "incomplete"]:
-                if len(args) != 1:
-                    print(f"Usage: {command} <id>")
-                    continue
-
-                try:
-                    task_id = int(args[0])
-                except ValueError:
-                    print("Task ID must be a number.")
-                    continue
-
-                if command == "complete":
-                    if todo_manager.mark_task_complete(task_id):
-                        print(f"Marked task #{task_id} as complete")
-                    else:
-                        print(f"Task with ID {task_id} not found.")
-                else:  # incomplete
-                    if todo_manager.mark_task_incomplete(task_id):
-                        print(f"Marked task #{task_id} as incomplete")
-                    else:
-                        print(f"Task with ID {task_id} not found.")
+                    print(f"Task #{task_id} not found")
 
             elif command == "search":
                 if len(args) < 1:
                     print("Usage: search <keyword>")
                     continue
-
-                keyword = args[0]
-                tasks = todo_manager.search_tasks(keyword)
+                keyword = " ".join(args)
+                tasks = manager.search_tasks(keyword)
                 if not tasks:
-                    print(f"No tasks found matching '{keyword}'.")
+                    print(f"No matches for '{keyword}'")
                 else:
-                    from ui import display_search_results
                     display_search_results(tasks, keyword)
 
             elif command == "filter":
                 if len(args) < 2:
-                    print("Usage: filter <type> <value>")
-                    print("Types: status, priority, tag")
-                    print("Values for status: completed, incomplete")
-                    print("Values for priority: high, medium, low")
+                    print("Usage: filter <type> <value> (status/priority/tag)")
                     continue
-
-                filter_type = args[0].lower()
-                filter_value = args[1].lower()
-
-                # Validate filter type
-                if filter_type not in ["status", "priority", "tag"]:
-                    print("Filter type must be 'status', 'priority', or 'tag'.")
-                    continue
-
-                # Validate filter value based on type
-                if filter_type == "status" and filter_value not in ["completed", "incomplete"]:
-                    print("Status filter value must be 'completed' or 'incomplete'.")
-                    continue
-                elif filter_type == "priority" and filter_value not in ["high", "medium", "low"]:
-                    print("Priority filter value must be 'high', 'medium', or 'low'.")
-                    continue
-
-                tasks = todo_manager.filter_tasks(filter_type, filter_value)
+                f_type, f_value = args[0].lower(), args[1].lower()
+                tasks = manager.filter_tasks(f_type, f_value)
                 if not tasks:
-                    print(f"No tasks found matching filter: {filter_type} = {filter_value}.")
+                    print(f"No tasks match filter: {f_type} = {f_value}")
                 else:
-                    from ui import display_filtered_tasks
-                    display_filtered_tasks(tasks, filter_type, filter_value)
+                    display_filtered_tasks(tasks, f_type, f_value)
 
             elif command == "sort":
                 if len(args) < 1:
-                    print("Usage: sort <type>")
-                    print("Types: priority, title, status")
+                    print("Usage: sort <type> (priority/title/status)")
                     continue
-
-                sort_type = args[0].lower()
-
-                # Validate sort type
-                if sort_type not in ["priority", "title", "status"]:
-                    print("Sort type must be 'priority', 'title', or 'status'.")
-                    continue
-
-                tasks = todo_manager.sort_tasks(sort_type)
+                s_type = args[0].lower()
+                tasks = manager.sort_tasks(s_type)
                 if not tasks:
-                    print("No tasks to sort.")
+                    print("No tasks to sort")
                 else:
-                    from ui import display_sorted_tasks
-                    display_sorted_tasks(tasks, sort_type)
+                    display_sorted_tasks(tasks, s_type)
 
             else:
-                print(f"Unknown command: {command}. Type 'help' for available commands.")
+                print(f"Unknown command: '{command}'. Type 'help'")
 
-        except KeyboardInterrupt:
-            print("\n\nGoodbye!")
-            sys.exit(0)
-        except EOFError:
+        except (KeyboardInterrupt, EOFError):
             print("\n\nGoodbye!")
             sys.exit(0)
 
